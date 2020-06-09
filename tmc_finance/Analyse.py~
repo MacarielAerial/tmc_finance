@@ -1,0 +1,62 @@
+'''
+The script produces a summary of London Business School's Tech & Media Club's financial position
+'''
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+class Aux:
+	'''Auxiliary module to streamline the code'''
+	def __init__(self):
+		pass
+
+	def preprocess_bal(self, df):
+		'''Preprocess club balance sheet'''
+		df = df.loc[(df['Accounting Period —>'] == 'Month Ending —>') | (df['Accounting Period —>'] == 'TECH & MEDIA CLUB'), :]
+		df = df.iloc[:, 3:]
+		df.reset_index(drop = True, inplace = True)
+		df = df.T
+		df.rename(columns = {0: 'date', 1: 'balance'}, inplace = True)
+		df.set_index('date', drop = True, inplace = True)
+		df.dropna(axis = 0, inplace = True)
+		df['balance'] = df['balance'].str.strip('£\ ()').str.replace(',', '').astype('float64')
+		df.index = pd.to_datetime(df.index)
+		return df
+
+	def preprocess_txn(self, df):
+		'''Preprocess transaction sheet'''
+		df = df.loc[df['Club Name'] == 'TECH & MEDIA CLUB', ['Amount', 'Debits/Credits', 'Transaction Reference', 'Description', 'Period', 'Transaction Date', 'Finance Code']]
+		df['Transaction Date'] = pd.to_datetime(df['Transaction Date'])
+		df['Finance Code'] = df['Finance Code'].astype('int64')
+		df.set_index('Transaction Date', inplace = True)
+		df.sort_index(inplace = True)
+		return df
+
+	def preprocess_fnc(self, df):
+		'''Preprocess finance code sheet'''
+		df = df.loc[df['SA Finance\nFinance Code Directory'] == 'Tech & Media Club', ['Unnamed: 0', 'Unnamed: 2', 'Unnamed: 3']]
+		df.rename(columns = {'Unnamed: 0': 'Finance Code', 'Unnamed: 2': 'Event Name', 'Unnamed: 3': 'Start Date'}, inplace = True)
+		df.reset_index(drop = True, inplace = True)
+		return df
+
+	def merge_data(self, df_bal, df_txn, df_fnc):
+		'''Merge processed dataframes into one matrix'''
+		print(df_txn)
+		print(df_fnc)
+
+class Analyse(Aux):
+	'''Main module'''
+	def __init__(self, input_bal_path, input_txn_path, input_fnc_path, output_dir_path):
+		super().__init__()
+		self.input_txn_path, self.input_bal_path, self.input_fnc_path, self.output_dir_path = input_txn_path, input_bal_path, input_fnc_path,  output_dir_path
+		self.df_bal, self.df_txn, self.df_fnc = pd.read_csv(self.input_bal_path), pd.read_csv(self.input_txn_path), pd.read_csv(input_fnc_path)
+			
+	def preprocess(self):
+		self.df_bal = self.preprocess_bal(self.df_bal)
+		self.df_txn = self.preprocess_txn(self.df_txn)
+		self.df_fnc = self.preprocess_fnc(self.df_fnc)
+		self.merge_data(self.df_bal, self.df_txn, self.df_fnc)
+
+	def exec(self):
+		self.preprocess()
